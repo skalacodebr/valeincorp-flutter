@@ -53,6 +53,9 @@ class ApiConfig {
   static String compartilhamentoById(int id) => '/compartilhamentos/$id';
   static String compartilhamentoEstatisticas(int id) => '/compartilhamentos/$id/estatisticas';
   
+  // Click Tracking endpoints
+  static const String clickTrackingTrack = '/click-tracking/track';
+  
   // System endpoints
   static const String health = '/health';
   static const String config = '/config';

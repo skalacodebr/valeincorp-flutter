@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 import '../config/theme.dart';
 import '../models/compartilhamento.dart';
 import '../services/compartilhamento_service.dart';
+import '../services/click_tracking_service.dart';
 
 class ShareSettingsModal extends StatefulWidget {
   final String entityType; // 'empreendimento' ou 'unidade'
@@ -49,6 +50,7 @@ class ShareSettingsModal extends StatefulWidget {
 
 class _ShareSettingsModalState extends State<ShareSettingsModal> {
   final CompartilhamentoService _service = CompartilhamentoService();
+  final ClickTrackingService _trackingService = ClickTrackingService();
   final TextEditingController _nomeClienteController = TextEditingController();
   final TextEditingController _anotacaoController = TextEditingController();
 
@@ -85,6 +87,17 @@ class _ShareSettingsModalState extends State<ShareSettingsModal> {
 
       if (response.success && response.data != null) {
         final compartilhamento = response.data!;
+
+        // Registra o evento de compartilhamento no sistema de tracking
+        // Não bloqueia o compartilhamento se o tracking falhar
+        _trackingService.trackShare(
+          entityType: widget.entityType,
+          entityId: widget.entityId,
+          sharePlatform: 'whatsapp', // WhatsApp é a plataforma padrão no Flutter
+        ).catchError((e) {
+          debugPrint('[ShareSettings] Erro ao rastrear compartilhamento: $e');
+          // Não mostrar erro ao usuário, apenas logar
+        });
 
         // Abre o share nativo com o link rastreável
         await _compartilharLink(compartilhamento);
