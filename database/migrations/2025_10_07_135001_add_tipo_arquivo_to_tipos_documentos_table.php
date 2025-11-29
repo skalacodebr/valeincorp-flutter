@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tipos_documentos', function (Blueprint $table) {
-            $table->enum('tipo_arquivo', ['pdf', 'imagem'])->after('descricao');
-        });
+        if (Schema::hasTable('tipos_documentos') && !Schema::hasColumn('tipos_documentos', 'tipo_arquivo')) {
+            Schema::table('tipos_documentos', function (Blueprint $table) {
+                if (Schema::hasColumn('tipos_documentos', 'descricao')) {
+                    $table->enum('tipo_arquivo', ['pdf', 'imagem'])->after('descricao');
+                } else {
+                    $table->enum('tipo_arquivo', ['pdf', 'imagem']);
+                }
+            });
+        }
     }
 
     /**

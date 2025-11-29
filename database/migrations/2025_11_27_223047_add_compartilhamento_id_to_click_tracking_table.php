@@ -11,18 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('click_tracking', function (Blueprint $table) {
-            if (!Schema::hasColumn('click_tracking', 'compartilhamento_id')) {
-                $table->foreignId('compartilhamento_id')
-                    ->nullable()
-                    ->after('entity_id')
-                    ->constrained('compartilhamentos')
+        if (Schema::hasTable('click_tracking') && !Schema::hasColumn('click_tracking', 'compartilhamento_id')) {
+            Schema::table('click_tracking', function (Blueprint $table) {
+                $column = $table->foreignId('compartilhamento_id')
+                    ->nullable();
+                
+                if (Schema::hasColumn('click_tracking', 'entity_id')) {
+                    $column->after('entity_id');
+                }
+                
+                $column->constrained('compartilhamentos')
                     ->onDelete('set null')
                     ->comment('ID do compartilhamento que gerou este clique');
                 
                 $table->index('compartilhamento_id');
-            }
-        });
+            });
+        }
     }
 
     /**

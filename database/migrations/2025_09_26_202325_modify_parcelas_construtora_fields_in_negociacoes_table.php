@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // SQLite não suporta renameColumn ou ALTER bem, ignoramos para SQLite
-        if (config('database.default') !== 'sqlite') {
+        if (config('database.default') !== 'sqlite' && Schema::hasTable('negociacoes')) {
             Schema::table('negociacoes', function (Blueprint $table) {
                 if (Schema::hasColumn('negociacoes', 'parcelas_construtora_data_pagamento')) {
                     $table->dropColumn('parcelas_construtora_data_pagamento');
@@ -22,7 +22,9 @@ return new class extends Migration
                     $table->renameColumn('parcelas_construtora_numero', 'parcelas_documentacao_construtora');
                 }
             });
-            DB::statement("ALTER TABLE negociacoes MODIFY COLUMN parcelas_documentacao_construtora INT NULL COMMENT 'Número de parcelas da documentação da construtora'");
+            if (Schema::hasColumn('negociacoes', 'parcelas_documentacao_construtora')) {
+                DB::statement("ALTER TABLE negociacoes MODIFY COLUMN parcelas_documentacao_construtora INT NULL COMMENT 'Número de parcelas da documentação da construtora'");
+            }
         }
     }
 

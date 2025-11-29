@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // SQLite não suporta change(), já criamos com longText na base
-        if (config('database.default') !== 'sqlite') {
+        if (config('database.default') !== 'sqlite' && Schema::hasTable('clientes_fotos')) {
             Schema::table('clientes_fotos', function (Blueprint $table) {
                 $table->longText('foto_url')->nullable()->change();
             });

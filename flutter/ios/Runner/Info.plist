@@ -10,24 +10,32 @@
 	<string>Valeincorp</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.mycompany.valeincorp</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>valeincorp</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
+	<string>1.0.7</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Este aplicativo precisa acessar a câmera para tirar fotos de documentos ou compartilhar imagens.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Este aplicativo precisa da sua localização para mostrar empreendimentos próximos e facilitar a navegação até os imóveis no mapa.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Este aplicativo precisa da sua localização para mostrar empreendimentos próximos e facilitar a navegação até os imóveis no mapa.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Este aplicativo precisa acessar suas fotos para selecionar imagens de documentos ou compartilhar conteúdo.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -47,13 +55,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Este aplicativo precisa da sua localização para mostrar empreendimentos próximos e facilitar a navegação até os imóveis no mapa.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Este aplicativo precisa da sua localização para mostrar empreendimentos próximos e facilitar a navegação até os imóveis no mapa.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Este aplicativo precisa acessar a câmera para tirar fotos de documentos ou compartilhar imagens.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Este aplicativo precisa acessar suas fotos para selecionar imagens de documentos ou compartilhar conteúdo.</string>
 </dict>
 </plist>

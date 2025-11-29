@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // SQLite não suporta change(), já criamos com o tipo correto na base
-        if (config('database.default') !== 'sqlite') {
+        if (config('database.default') !== 'sqlite' && Schema::hasTable('negociacoes') && Schema::hasColumn('negociacoes', 'permuta')) {
             Schema::table('negociacoes', function (Blueprint $table) {
                 $table->decimal('permuta', 12, 2)->nullable()->change();
             });

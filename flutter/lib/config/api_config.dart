@@ -1,11 +1,12 @@
 class ApiConfig {
   // URLs dos ambientes
-  static const String _localUrl = 'http://127.0.0.1:8000/api';
+  // Usar localhost ao invés de 127.0.0.1 para evitar problemas de CORS no navegador
+  static const String _localUrl = 'http://localhost:8000/api';
   static const String _productionUrl = 'https://backend.valeincorp.com.br/api';
   
   // Para desenvolvimento local, use _localUrl
-  // Para produção, mude para _productionUrl
-  static const String baseUrl = _localUrl;
+  // Para produção (TestFlight/App Store), use _productionUrl
+  static const String baseUrl = _productionUrl;
   
   // Auth endpoints
   static const String login = '/auth/login';

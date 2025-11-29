@@ -3,7 +3,6 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Middleware\CorsMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,8 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->redirectGuestsTo(fn () => abort(401, 'Unauthenticated.'));
         
-        // Adiciona middleware CORS customizado globalmente (primeiro a ser executado)
-        $middleware->prepend(CorsMiddleware::class);
+        // CORS é gerenciado automaticamente pelo Laravel através de config/cors.php
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
