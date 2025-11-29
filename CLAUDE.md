@@ -1,1 +1,0 @@
-Não mexa no frontend do projeto, apenas mexa na pasta atual do valeincorp-backend e caso tenha modificacao no front voce me manda um prompt da alteracao
