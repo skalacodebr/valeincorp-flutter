@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../config/routes.dart';
 
-enum NavItem { inicio, buscar, atividades, perfil }
+enum NavItem { inicio, buscar, atividades, favoritos, perfil }
 
 class BottomNavigation extends StatelessWidget {
   final NavItem currentItem;
@@ -51,8 +51,8 @@ class BottomNavigation extends StatelessWidget {
               _buildNavItem(
                 context,
                 NavItem.atividades,
-                Icons.timeline_outlined,
-                Icons.timeline,
+                Icons.analytics_outlined,
+                Icons.analytics,
                 'Atividades',
                 AppRoutes.atividades,
               ),

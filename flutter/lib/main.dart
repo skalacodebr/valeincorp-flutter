@@ -6,10 +6,13 @@ import 'config/routes.dart';
 import 'providers/auth_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/favoritos_provider.dart';
-import 'providers/compartilhamentos_provider.dart';
+import 'services/api_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar ApiService
+  await ApiService().init();
   
   // Configurar orientação apenas retrato
   SystemChrome.setPreferredOrientations([
@@ -43,10 +46,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthProvider, FavoritosProvider>(
           create: (_) => FavoritosProvider(),
           update: (_, auth, favoritos) => favoritos!..updateAuth(auth),
-        ),
-        ChangeNotifierProxyProvider<AuthProvider, CompartilhamentosProvider>(
-          create: (_) => CompartilhamentosProvider(),
-          update: (_, auth, compartilhamentos) => compartilhamentos!..updateAuth(auth),
         ),
       ],
       child: MaterialApp(

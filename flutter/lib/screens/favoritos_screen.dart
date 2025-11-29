@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../config/routes.dart';
-import '../models/imovel.dart';
 import '../providers/favoritos_provider.dart';
 import '../widgets/card_imovel.dart';
 import '../widgets/bottom_navigation.dart';
@@ -84,7 +83,7 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                           );
                         },
                         onFavoritoTap: () {
-                          _confirmarRemocao(context, favoritosProvider, imovel);
+                          _confirmarRemocao(context, favoritosProvider, imovel.id);
                         },
                       );
                     },
@@ -95,7 +94,7 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const BottomNavigation(currentItem: NavItem.atividades),
+      bottomNavigationBar: const BottomNavigation(currentItem: NavItem.favoritos),
     );
   }
 
@@ -245,67 +244,30 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
   void _confirmarRemocao(
     BuildContext context,
     FavoritosProvider provider,
-    Imovel imovel,
+    int imovelId,
   ) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.favorite, color: AppColors.error, size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Text('Remover favorito?'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Deseja remover "${imovel.nome}" dos seus favoritos?',
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const Text('Remover dos favoritos?'),
+        content: const Text(
+          'Tem certeza que deseja remover este imóvel dos seus favoritos?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(context),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              final result = await provider.removerFavorito(imovel.id);
-              if (mounted) {
-                if (result) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${imovel.nome} removido dos favoritos'),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                } else if (provider.error != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(provider.error!),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                  provider.clearError();
-                }
-              }
+            onPressed: () {
+              provider.removerFavorito(imovelId);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Removido dos favoritos'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,

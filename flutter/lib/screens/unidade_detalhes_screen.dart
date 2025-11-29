@@ -3,8 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../config/theme.dart';
 import '../models/unidade.dart';
 import '../services/imoveis_service.dart';
-import '../widgets/compartilhamento_modal.dart';
-import '../widgets/criar_compartilhamento_modal.dart';
+import '../widgets/share_settings_modal.dart';
 import '../widgets/image_zoom_modal.dart';
 
 class UnidadeDetalhesScreen extends StatefulWidget {
@@ -63,16 +62,13 @@ class _UnidadeDetalhesScreenState extends State<UnidadeDetalhesScreen>
   void _compartilhar() {
     if (_unidade == null) return;
     
-    showModalBottomSheet(
+    ShareSettingsModal.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CriarCompartilhamentoModal(
-        entityType: 'unidade',
-        entityId: widget.unidadeId,
-        titulo: 'Unidade ${_unidade!.numero} - ${_unidade!.empreendimento.nome}',
-        imageUrl: _unidade!.fotos.isNotEmpty ? _unidade!.fotos.first.fotosUrl : null,
-      ),
+      entityType: 'unidade',
+      entityId: widget.unidadeId,
+      entityNome: 'Unidade ${_unidade!.numero}',
+      entitySubtitulo: _unidade!.empreendimento.nome,
+      imageUrl: _unidade!.fotos.isNotEmpty ? _unidade!.fotos.first.fotosUrl : null,
     );
   }
 

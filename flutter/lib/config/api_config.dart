@@ -1,20 +1,7 @@
 class ApiConfig {
-  // =====================================================
-  // CONFIGURAÇÃO HÍBRIDA (DESENVOLVIMENTO)
-  // =====================================================
-  // - Dados (empreendimentos, login, etc) → Produção (com imagens/fotos)
-  // - Compartilhamentos e Favoritos → Servidor local (para testes sem auth)
-  // =====================================================
-  
-  // PRODUÇÃO - para ver empreendimentos com imagens/fotos reais
+  // Para testes locais, use: 'http://127.0.0.1:8000/api'
+  // Para produção, use: 'https://backend.valeincorp.com.br/api'
   static const String baseUrl = 'https://backend.valeincorp.com.br/api';
-  
-  // LOCAL - para testar compartilhamentos e favoritos (sem auth)
-  // Usa rotas de teste: /api/test-compartilhamentos e /api/test-favoritos
-  static const String localBaseUrl = 'http://192.168.2.116:8000/api';
-  
-  // Flag para usar endpoints de teste (sem autenticação)
-  static const bool useTestEndpoints = true;
   
   // Auth endpoints
   static const String login = '/auth/login';
@@ -31,15 +18,11 @@ class ApiConfig {
   static String imovelById(int id) => '/imoveis/$id';
   static String imovelImages(int id, String storyType) => '/imoveis/$id/images/$storyType';
   
-  // Favoritos endpoints - usa test-favoritos quando em modo de teste
-  static String get favoritos => useTestEndpoints ? '/test-favoritos' : '/favoritos';
-  static String favoritoRemove(int imovelId) => useTestEndpoints 
-      ? '/test-favoritos/$imovelId' 
-      : '/favoritos/$imovelId';
-  static String favoritoCheck(int imovelId) => useTestEndpoints 
-      ? '/test-favoritos/check/$imovelId' 
-      : '/favoritos/check/$imovelId';
-  static String get favoritosCount => useTestEndpoints ? '/test-favoritos/count' : '/favoritos/count';
+  // Favoritos endpoints
+  static const String favoritos = '/favoritos';
+  static String favoritoRemove(int imovelId) => '/favoritos/$imovelId';
+  static String favoritoCheck(int imovelId) => '/favoritos/check/$imovelId';
+  static const String favoritosCount = '/favoritos/count';
   
   // Busca endpoints
   static const String cidades = '/cidades';
@@ -60,15 +43,9 @@ class ApiConfig {
   // Torres endpoints
   static String torreUnidades(int torreId) => '/torres/$torreId/unidades';
   
-  // Compartilhamentos endpoints - usa test-compartilhamentos quando em modo de teste
-  static String get compartilhamentos => useTestEndpoints 
-      ? '/test-compartilhamentos' 
-      : '/compartilhamentos';
-  static String get compartilhamentosTest => compartilhamentos;
-  static String get compartilhamentosBaseUrl => localBaseUrl;
-  static String compartilhamentoById(int id) => useTestEndpoints 
-      ? '/test-compartilhamentos/$id' 
-      : '/compartilhamentos/$id';
+  // Compartilhamentos endpoints
+  static const String compartilhamentos = '/compartilhamentos';
+  static String compartilhamentoById(int id) => '/compartilhamentos/$id';
   static String compartilhamentoEstatisticas(int id) => '/compartilhamentos/$id/estatisticas';
   
   // System endpoints

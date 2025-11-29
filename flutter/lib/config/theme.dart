@@ -58,13 +58,13 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-      cardTheme: CardThemeData(
-        color: AppColors.cardBackground,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
+cardTheme: const CardThemeData(
+  color: AppColors.cardBackground,
+  elevation: 2,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(16)),
+  ),
+),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryGold,

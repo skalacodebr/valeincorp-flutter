@@ -6,7 +6,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:dio/dio.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../config/theme.dart';
 import '../models/imovel_detalhes.dart';
 import '../services/imoveis_service.dart';
@@ -14,8 +13,7 @@ import '../providers/favoritos_provider.dart';
 import '../widgets/espelho_vendas_modal.dart';
 import '../widgets/modal_unidades.dart';
 import '../widgets/stories_modal.dart';
-import '../widgets/compartilhamento_modal.dart';
-import '../widgets/criar_compartilhamento_modal.dart';
+import '../widgets/share_settings_modal.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/documento_viewer.dart';
 import '../widgets/info_card_flutuante.dart';
@@ -25,6 +23,7 @@ import '../widgets/galeria_categorias.dart';
 import '../widgets/andamento_obra_section.dart';
 import '../widgets/documentos_list.dart';
 import '../widgets/plantas_section.dart';
+import '../widgets/acoes_bar.dart';
 
 class ImovelDetalhesScreen extends StatefulWidget {
   final int imovelId;
@@ -56,8 +55,13 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
   @override
   void initState() {
     super.initState();
-    // Agora com 5 tabs: Sobre, Localização, Documentos, Valores, Plantas
+    // 5 tabs: Sobre, Localização, Documentos, Valores, Plantas
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     _carregarDados();
   }
 
@@ -74,13 +78,11 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     });
 
     try {
-      // Carregar detalhes do imóvel
       final response = await _imoveisService.getById(widget.imovelId);
 
       if (response.success && response.data != null) {
         setState(() => _imovel = response.data);
 
-        // Carregar detalhes adicionais do empreendimento
         try {
           final empResponse = await _imoveisService.getEmpreendimentoDetalhes(widget.imovelId);
           if (empResponse.success) {
@@ -90,7 +92,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
           debugPrint('Erro ao carregar empreendimento: $e');
         }
         
-        // Fazer geocoding do endereço
         _carregarCoordenadas();
       } else {
         setState(() => _erro = response.message ?? 'Imóvel não encontrado');
@@ -108,7 +109,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     setState(() => _carregandoMapa = true);
     
     try {
-      // Primeiro, verificar se já tem coordenadas válidas do backend
       if (_imovel!.coordenadas != null &&
           _imovel!.coordenadas!.latitude != 0 &&
           _imovel!.coordenadas!.longitude != 0 &&
@@ -122,7 +122,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
         return;
       }
       
-      // Montar endereço para geocoding
       String endereco = '';
       if (_imovel!.endereco != null) {
         final end = _imovel!.endereco!;
@@ -141,7 +140,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
       
       setState(() => _enderecoMapa = endereco);
       
-      // Fazer geocoding usando Nominatim (OpenStreetMap)
       final dio = Dio();
       final response = await dio.get(
         'https://nominatim.openstreetmap.org/search',
@@ -151,9 +149,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
           'limit': 1,
         },
         options: Options(
-          headers: {
-            'User-Agent': 'ValeincorpApp/1.0',
-          },
+          headers: {'User-Agent': 'ValeincorpApp/1.0'},
         ),
       );
       
@@ -172,6 +168,11 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
   }
 
   void _abrirEspelhoVendas() {
+    debugPrint('[EspelhoVendas] Abrindo modal...');
+    debugPrint('[EspelhoVendas] imovelId: ${widget.imovelId}');
+    debugPrint('[EspelhoVendas] espelhoVendasData: ${_imovel?.espelhoVendas}');
+    debugPrint('[EspelhoVendas] torres: ${_imovel?.espelhoVendas?['torres']}');
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -197,28 +198,23 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
   }
 
   void _abrirCompartilhamento() {
-    showModalBottomSheet(
+    ShareSettingsModal.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CriarCompartilhamentoModal(
-        entityType: 'empreendimento',
-        entityId: widget.imovelId,
-        titulo: _imovel?.nome ?? '',
-        imageUrl: _imovel?.imagem,
-      ),
+      entityType: 'empreendimento',
+      entityId: widget.imovelId,
+      entityNome: _imovel?.nome ?? 'Empreendimento',
+      entitySubtitulo: _imovel?.localizacao,
+      imageUrl: _imovel?.imagem,
     );
   }
 
   void _abrirQrCode() {
-    final shareUrl = 'https://valeincorp.com.br/empreendimento/${widget.imovelId}';
+    final shareUrl = 'https://app.valeincorp.com.br/empreendimento/${widget.imovelId}';
     
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -235,42 +231,33 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
               const SizedBox(height: 8),
               Text(
                 _imovel?.nome ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: QrImageView(
-                  data: shareUrl,
-                  version: QrVersions.auto,
-                  size: 200,
-                  backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: AppColors.primaryBlue,
-                  ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
-                    color: AppColors.primaryBlue,
-                  ),
+                child: Column(
+                  children: [
+                    Icon(Icons.qr_code_2, size: 120, color: AppColors.primaryBlue),
+                    const SizedBox(height: 12),
+                    Text(
+                      shareUrl,
+                      style: const TextStyle(fontSize: 10, color: AppColors.textHint),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Escaneie para acessar',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textHint,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.textHint),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -280,9 +267,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Fechar'),
                 ),
@@ -295,16 +280,14 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
   }
 
   void _irParaDocumentos() {
-    _tabController.animateTo(2); // Index da tab Documentos
+    _tabController.animateTo(2);
   }
 
   void _abrirStory(Story story) {
     if (story.imagens.isEmpty) return;
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => StoriesModal(story: story),
-      ),
+      MaterialPageRoute(builder: (context) => StoriesModal(story: story)),
     );
   }
 
@@ -327,25 +310,21 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
   }
 
   void _abrirPdf() {
-    // Buscar o primeiro documento PDF disponível
-    final pdfDoc = _imovel?.documentos.firstWhere(
-      (d) => d.isPdf,
-      orElse: () => _imovel!.documentos.first,
-    );
+    final pdfDoc = _imovel?.documentos.where((d) => d.isPdf).firstOrNull;
     
     if (pdfDoc != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => DocumentoViewer(documento: pdfDoc),
-        ),
+        MaterialPageRoute(builder: (context) => DocumentoViewer(documento: pdfDoc)),
+      );
+    } else if (_imovel?.documentos.isNotEmpty == true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => DocumentoViewer(documento: _imovel!.documentos.first)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nenhum PDF disponível'),
-          behavior: SnackBarBehavior.floating,
-        ),
+        const SnackBar(content: Text('Nenhum documento disponível'), behavior: SnackBarBehavior.floating),
       );
     }
   }
@@ -389,167 +368,123 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: NestedScrollView(
-        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-          return [
-            SliverAppBar(
-              expandedHeight: 280,
-              floating: false,
-              pinned: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                  onPressed: () => Navigator.pop(context),
+      body: Stack(
+        children: [
+          // Conteúdo scrollável
+          CustomScrollView(
+            slivers: [
+              // Header com imagem
+              SliverToBoxAdapter(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Imagem de fundo
+                    SizedBox(
+                      height: 300,
+                      width: double.infinity,
+                      child: _buildHeaderImage(),
+                    ),
+                    // Card flutuante
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: -30,
+                      child: InfoCardFlutuante(imovel: _imovel!),
+                    ),
+                  ],
                 ),
               ),
-              actions: [
+              // Espaço para o card
+              const SliverToBoxAdapter(child: SizedBox(height: 38)),
+              // Tabs
+              SliverToBoxAdapter(child: _buildTabs()),
+              // Barra de ações
+              SliverToBoxAdapter(
+                child: AcoesBar(
+                  onPdfTap: _abrirPdf,
+                  onEspelhoVendasTap: _abrirEspelhoVendas,
+                  onReservaTap: _abrirModalUnidades,
+                  onCompartilharTap: _abrirCompartilhamento,
+                ),
+              ),
+              // Conteúdo da tab ativa
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildActiveTabContent(),
+              ),
+            ],
+          ),
+          // Botões de navegação fixos no topo
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildCircleButton(Icons.arrow_back, () => Navigator.pop(context)),
                 Consumer<FavoritosProvider>(
                   builder: (context, favoritosProvider, child) {
                     final isFavorito = favoritosProvider.isFavorito(_imovel!.id);
-                    final isToggling = favoritosProvider.isToggling;
-                    
-                    return Container(
-                      margin: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: isToggling
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primaryGold,
-                                ),
-                              ),
-                            )
-                          : IconButton(
-                              icon: Icon(
-                                isFavorito ? Icons.favorite : Icons.favorite_border,
-                                color: isFavorito ? Colors.red : AppColors.textPrimary,
-                              ),
-                              onPressed: () async {
-                                final result = await favoritosProvider.toggleFavorito(_imovel!);
-                                if (mounted) {
-                                  if (result) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          isFavorito 
-                                              ? 'Removido dos favoritos' 
-                                              : 'Adicionado aos favoritos',
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: isFavorito 
-                                            ? AppColors.textSecondary 
-                                            : AppColors.success,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  } else if (favoritosProvider.error != null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(favoritosProvider.error!),
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: AppColors.error,
-                                      ),
-                                    );
-                                    favoritosProvider.clearError();
-                                  }
-                                }
-                              },
+                    return _buildCircleButton(
+                      isFavorito ? Icons.favorite : Icons.favorite_border,
+                      () async {
+                        final wasIsFavorito = isFavorito;
+                        final result = await favoritosProvider.toggleFavorito(_imovel!);
+                        if (mounted && result) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(wasIsFavorito ? 'Removido dos favoritos' : 'Adicionado aos favoritos'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: wasIsFavorito ? AppColors.textSecondary : AppColors.success,
+                              duration: const Duration(seconds: 2),
                             ),
+                          );
+                        }
+                      },
+                      color: isFavorito ? Colors.red : null,
                     );
                   },
                 ),
               ],
-              flexibleSpace: FlexibleSpaceBar(
-                background: _buildHeaderImage(),
-              ),
             ),
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  _buildHeaderInfo(),
-                  // Card Flutuante com informações principais
-                  Transform.translate(
-                    offset: const Offset(0, -20),
-                    child: InfoCardFlutuante(
-                      imovel: _imovel!,
-                      onPdfTap: _abrirPdf,
-                      onEspelhoVendasTap: _abrirEspelhoVendas,
-                      onReservaTap: _abrirModalUnidades,
-                      onCompartilharTap: _abrirCompartilhamento,
-                    ),
-                  ),
-                  _buildTabs(),
-                ],
-              ),
-            ),
-          ];
-        },
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildSobreTab(),
-            _buildLocalizacaoTab(),
-            _buildDocumentosTab(),
-            _buildValoresTab(),
-            _buildPlantasTab(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildHeaderImage() {
     return Stack(
+      fit: StackFit.expand,
       children: [
-        // Background image
         CachedNetworkImage(
-          imageUrl: _empreendimentoDetalhes?['imagem_empreendimento'] ?? 
-                    _imovel?.imagem ?? '',
+          imageUrl: _empreendimentoDetalhes?['imagem_empreendimento'] ?? _imovel?.imagem ?? '',
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
           placeholder: (context, url) => Container(
             color: AppColors.background,
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryGold),
-            ),
+            child: const Center(child: CircularProgressIndicator(color: AppColors.primaryGold)),
           ),
           errorWidget: (context, url, error) => Container(
             color: AppColors.background,
             child: const Icon(Icons.apartment, size: 64, color: AppColors.textHint),
           ),
         ),
-
-        // Gradient overlay
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.4),
+                Colors.black.withOpacity(0.3),
                 Colors.transparent,
                 Colors.black.withOpacity(0.6),
               ],
             ),
           ),
         ),
-        
-        // Status badge e nome no header
         Positioned(
           bottom: 40,
           left: 16,
@@ -565,27 +500,17 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                 ),
                 child: Text(
                   _imovel!.status,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 _imovel!.nome,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(0, 1),
-                      blurRadius: 4,
-                      color: Colors.black45,
-                    ),
-                  ],
+                  shadows: [Shadow(offset: Offset(0, 1), blurRadius: 4, color: Colors.black45)],
                 ),
               ),
               const SizedBox(height: 4),
@@ -593,14 +518,8 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                 _imovel!.localizacao,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
-                  shadows: const [
-                    Shadow(
-                      offset: Offset(0, 1),
-                      blurRadius: 4,
-                      color: Colors.black45,
-                    ),
-                  ],
+                  fontSize: 13,
+                  shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 4, color: Colors.black45)],
                 ),
               ),
             ],
@@ -610,10 +529,42 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     );
   }
 
-  Widget _buildHeaderInfo() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.only(top: 16, bottom: 30),
+  Widget _buildActiveTabContent() {
+    switch (_tabController.index) {
+      case 0:
+        return _buildSobreContent();
+      case 1:
+        return _buildLocalizacaoContent();
+      case 2:
+        return _buildDocumentosContent();
+      case 3:
+        return _buildValoresContent();
+      case 4:
+        return _buildPlantasContent();
+      default:
+        return _buildSobreContent();
+    }
+  }
+
+  Widget _buildCircleButton(IconData icon, VoidCallback onTap, {Color? color}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: color ?? AppColors.textPrimary, size: 20),
+      ),
     );
   }
 
@@ -628,14 +579,8 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
         indicatorWeight: 3,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
-        labelStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         tabs: const [
           Tab(text: 'Sobre'),
           Tab(text: 'Localização'),
@@ -647,10 +592,11 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     );
   }
 
-  Widget _buildSobreTab() {
-    return SingleChildScrollView(
+  Widget _buildSobreContent() {
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Galeria de Fotos (Stories)
@@ -680,11 +626,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                     _imovel!.descricao!,
                     maxLines: _mostrarMais ? null : 4,
                     overflow: _mostrarMais ? null : TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      height: 1.6,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: AppColors.textSecondary, height: 1.6, fontSize: 14),
                   ),
                   if (_imovel!.descricao!.length > 200)
                     Align(
@@ -693,10 +635,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                         onPressed: () => setState(() => _mostrarMais = !_mostrarMais),
                         child: Text(
                           _mostrarMais ? 'Ver menos' : 'Continuar lendo',
-                          style: const TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -717,9 +656,8 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             const SizedBox(height: 24),
           ],
 
-          // Vídeos
-          if (_empreendimentoDetalhes?['videos_unidades'] != null &&
-              (_empreendimentoDetalhes!['videos_unidades'] as List).isNotEmpty) ...[
+          // Vídeos - busca de múltiplas fontes
+          if (_temVideos()) ...[
             _buildVideosSection(),
             const SizedBox(height: 24),
             const Divider(color: AppColors.border),
@@ -767,17 +705,12 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             const SizedBox(width: 12),
             const Text(
               'Visão geral',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
           ],
         ),
         const SizedBox(height: 16),
         
-        // Unidades disponíveis
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -802,17 +735,8 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Unidades Disponíveis',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Para venda imediata',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+                      Text('Unidades Disponíveis', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Para venda imediata', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
                 ],
@@ -823,11 +747,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                 children: [
                   Text(
                     '${_imovel!.unidadesDisponiveis ?? 0}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.success,
-                    ),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.success),
                   ),
                   Text(
                     'de ${_imovel!.totalUnidades ?? 0} unidades',
@@ -839,8 +759,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: (_imovel!.unidadesDisponiveis ?? 0) /
-                      (_imovel!.totalUnidades ?? 1),
+                  value: (_imovel!.unidadesDisponiveis ?? 0) / (_imovel!.totalUnidades ?? 1),
                   backgroundColor: AppColors.border,
                   valueColor: const AlwaysStoppedAnimation(AppColors.success),
                   minHeight: 6,
@@ -854,9 +773,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: const Text('Ver Disponibilidade de Unidades'),
                 ),
@@ -866,7 +783,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
         ),
         const SizedBox(height: 16),
 
-        // Grid de informações
         Row(
           children: [
             Expanded(
@@ -892,11 +808,60 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     );
   }
 
+  /// Retorna lista de URLs de vídeos de todas as fontes disponíveis
+  List<String> _getVideosUrls() {
+    final List<String> videos = [];
+    
+    // 1. Vídeo único do imóvel (videoUrl)
+    if (_imovel?.videoUrl != null && _imovel!.videoUrl!.isNotEmpty) {
+      videos.add(_imovel!.videoUrl!);
+    }
+    
+    // 2. Lista de vídeos do imóvel (videosUnidades)
+    if (_imovel?.videosUnidades.isNotEmpty == true) {
+      for (final video in _imovel!.videosUnidades) {
+        if (video.videoUrl.isNotEmpty) {
+          videos.add(video.videoUrl);
+        }
+      }
+    }
+    
+    // 3. Vídeos do empreendimento detalhes (videos_unidades)
+    if (_empreendimentoDetalhes?['videos_unidades'] != null) {
+      final videosEmp = _empreendimentoDetalhes!['videos_unidades'] as List;
+      for (final video in videosEmp) {
+        final url = video['video_url']?.toString() ?? '';
+        if (url.isNotEmpty && !videos.contains(url)) {
+          videos.add(url);
+        }
+      }
+    }
+    
+    // 4. Vídeo único do empreendimento (video_url)
+    if (_empreendimentoDetalhes?['video_url'] != null) {
+      final url = _empreendimentoDetalhes!['video_url'].toString();
+      if (url.isNotEmpty && !videos.contains(url)) {
+        videos.add(url);
+      }
+    }
+    
+    return videos;
+  }
+  
+  bool _temVideos() {
+    return _getVideosUrls().isNotEmpty;
+  }
+
   Widget _buildVideosSection() {
-    final videos = _empreendimentoDetalhes!['videos_unidades'] as List;
+    final videos = _getVideosUrls();
     if (videos.isEmpty) return const SizedBox.shrink();
 
-    final videoAtual = videos[_videoAtivo] as Map<String, dynamic>;
+    // Garantir que o índice do vídeo ativo é válido
+    if (_videoAtivo >= videos.length) {
+      _videoAtivo = 0;
+    }
+
+    final videoAtualUrl = videos[_videoAtivo];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -915,11 +880,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             const SizedBox(width: 12),
             const Text(
               'Vídeo',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -931,15 +892,12 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AspectRatio(
                 aspectRatio: 16 / 9,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: VideoPlayerWidget(
-                    videoUrl: videoAtual['video_url'] ?? '',
-                  ),
+                  child: VideoPlayerWidget(videoUrl: videoAtualUrl),
                 ),
               ),
               if (videos.length > 1) ...[
@@ -955,9 +913,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                         height: 8,
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         decoration: BoxDecoration(
-                          color: index == _videoAtivo
-                              ? AppColors.primaryBlue
-                              : AppColors.border,
+                          color: index == _videoAtivo ? AppColors.primaryBlue : AppColors.border,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -970,18 +926,8 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   onPressed: _abrirCompartilhamento,
-                  icon: const Icon(
-                    Icons.share_outlined,
-                    size: 16,
-                    color: AppColors.primaryBlue,
-                  ),
-                  label: const Text(
-                    'Compartilhar',
-                    style: TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  icon: const Icon(Icons.share_outlined, size: 16, color: AppColors.primaryBlue),
+                  label: const Text('Compartilhar', style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],
@@ -1014,20 +960,8 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -1036,10 +970,11 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     );
   }
 
-  Widget _buildLocalizacaoTab() {
-    return SingleChildScrollView(
+  Widget _buildLocalizacaoContent() {
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1056,11 +991,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
               const SizedBox(width: 12),
               const Text(
                 'Localização',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
             ],
           ),
@@ -1080,13 +1011,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Endereço Completo',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
+                const Text('Endereço Completo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 16),
                 if (_imovel!.endereco != null) ...[
                   _buildEnderecoRow('Logradouro', _imovel!.endereco!.logradouro),
@@ -1101,7 +1026,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
           ),
           const SizedBox(height: 24),
 
-          // Mapa interativo
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Container(
@@ -1124,14 +1048,11 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
           
-          // Pontos de Referência
           if (_imovel!.pontosReferencia.isNotEmpty) ...[
             const SizedBox(height: 24),
             _buildProximidadeCard(
@@ -1142,7 +1063,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             ),
           ],
           
-          // Transporte
           if (_imovel!.transporte.isNotEmpty) ...[
             const SizedBox(height: 16),
             _buildProximidadeCard(
@@ -1165,11 +1085,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -1186,14 +1102,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                 child: Icon(icone, color: cor, size: 22),
               ),
               const SizedBox(width: 12),
-              Text(
-                titulo,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             ],
           ),
           const SizedBox(height: 16),
@@ -1206,47 +1115,19 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: cor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: cor, shape: BoxShape.circle)),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item['nome'] ?? '',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
+                    Expanded(child: Text(item['nome'] ?? '', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary))),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: cor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        item['distancia'] ?? '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: cor,
-                        ),
-                      ),
+                      decoration: BoxDecoration(color: cor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      child: Text(item['distancia'] ?? '', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cor)),
                     ),
                   ],
                 ),
                 if (!isLast) ...[
                   const SizedBox(height: 12),
-                  Divider(
-                    height: 1,
-                    color: AppColors.border.withOpacity(0.5),
-                  ),
+                  Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
                   const SizedBox(height: 12),
                 ],
               ],
@@ -1258,7 +1139,6 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
   }
 
   Widget _buildMapaInterativo() {
-    // Mostrar loading enquanto carrega coordenadas
     if (_carregandoMapa) {
       return Container(
         color: AppColors.background,
@@ -1266,26 +1146,15 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: AppColors.primaryBlue,
-                ),
-              ),
+              SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primaryBlue)),
               SizedBox(height: 12),
-              Text(
-                'Carregando mapa...',
-                style: TextStyle(color: AppColors.textHint),
-              ),
+              Text('Carregando mapa...', style: TextStyle(color: AppColors.textHint)),
             ],
           ),
         ),
       );
     }
     
-    // Verificar se tem coordenadas válidas
     if (_mapLatitude == null || _mapLongitude == null) {
       return Container(
         color: AppColors.background,
@@ -1295,29 +1164,20 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             children: [
               const Icon(Icons.location_off, size: 48, color: AppColors.textHint),
               const SizedBox(height: 8),
-              Text(
-                _enderecoMapa ?? 'Localização não disponível',
-                style: const TextStyle(color: AppColors.textHint, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
+              Text(_enderecoMapa ?? 'Localização não disponível', style: const TextStyle(color: AppColors.textHint, fontSize: 12), textAlign: TextAlign.center),
             ],
           ),
         ),
       );
     }
     
-    final lat = _mapLatitude!;
-    final lng = _mapLongitude!;
-    
     return Stack(
       children: [
         FlutterMap(
           options: MapOptions(
-            initialCenter: LatLng(lat, lng),
+            initialCenter: LatLng(_mapLatitude!, _mapLongitude!),
             initialZoom: 15.0,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-            ),
+            interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
           ),
           children: [
             TileLayer(
@@ -1328,7 +1188,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             MarkerLayer(
               markers: [
                 Marker(
-                  point: LatLng(lat, lng),
+                  point: LatLng(_mapLatitude!, _mapLongitude!),
                   width: 50,
                   height: 50,
                   child: Container(
@@ -1336,26 +1196,15 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                       color: AppColors.primaryBlue,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryBlue.withOpacity(0.4),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        ),
-                      ],
+                      boxShadow: [BoxShadow(color: AppColors.primaryBlue.withOpacity(0.4), blurRadius: 10, spreadRadius: 2)],
                     ),
-                    child: const Icon(
-                      Icons.home,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                    child: const Icon(Icons.home, color: Colors.white, size: 24),
                   ),
                 ),
               ],
             ),
           ],
         ),
-        // Badge com endereço do empreendimento
         Positioned(
           top: 12,
           left: 12,
@@ -1365,13 +1214,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
             ),
             child: Row(
               children: [
@@ -1380,11 +1223,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                 Expanded(
                   child: Text(
                     _enderecoMapa ?? _imovel?.localizacao ?? '',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1405,43 +1244,28 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
           ),
-          Expanded(
-            child: Text(
-              value.isEmpty ? 'N/A' : value,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
+          Expanded(child: Text(value.isEmpty ? 'N/A' : value, style: const TextStyle(color: AppColors.textSecondary))),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentosTab() {
+  Widget _buildDocumentosContent() {
     return DocumentosList(
       documentos: _imovel!.documentos,
       onDocumentoTap: (documento) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DocumentoViewer(documento: documento),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => DocumentoViewer(documento: documento)));
       },
     );
   }
 
-  Widget _buildValoresTab() {
-    return SingleChildScrollView(
+  Widget _buildValoresContent() {
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1449,80 +1273,49 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: BoxDecoration(color: AppColors.primaryBlue, borderRadius: BorderRadius.circular(8)),
                 child: const Icon(Icons.attach_money, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Valores',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              const Text('Valores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             ],
           ),
           const SizedBox(height: 16),
           
-          // Preço principal
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-            ),
+            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(16)),
             child: Column(
               children: [
                 Text(
-                  _imovel!.precoFormatado ?? 'R\$ ${_imovel!.preco.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryBlue,
-                  ),
+                  _imovel!.precoFormatado ?? 'R\$ ${_imovel!.preco}',
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primaryBlue),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Valor total do terreno',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
+                const Text('Valor total do terreno', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Info adicional
           Row(
             children: [
               Expanded(
                 child: _buildInfoTile(
                   'Valor por m²',
-                  _imovel!.valorM2 != null ? 'R\$ ${_imovel!.valorM2!.toStringAsFixed(2)}' : 'N/A',
+                  _imovel!.valorM2 != null ? 'R\$ ${_imovel!.valorM2}' : 'N/A',
                   Icons.square_foot,
                   AppColors.primaryGold,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildInfoTile(
-                  'Condições',
-                  'À vista/Financiado',
-                  Icons.payment,
-                  AppColors.primaryBlue,
-                ),
+                child: _buildInfoTile('Condições', 'À vista/Financiado', Icons.payment, AppColors.primaryBlue),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Observações
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1537,13 +1330,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                   children: [
                     Icon(Icons.info_outline, color: Colors.amber.shade700, size: 20),
                     const SizedBox(width: 8),
-                    Text(
-                      'Observações Importantes',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.amber.shade800,
-                      ),
-                    ),
+                    Text('Observações Importantes', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.amber.shade800)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -1551,11 +1338,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
                   '• Valores sujeitos a alteração sem aviso prévio\n'
                   '• Consulte taxas e impostos adicionais\n'
                   '• Documentação e aprovações em dia',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.amber.shade800,
-                    height: 1.6,
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.amber.shade800, height: 1.6),
                 ),
               ],
             ),
@@ -1565,7 +1348,7 @@ class _ImovelDetalhesScreenState extends State<ImovelDetalhesScreen>
     );
   }
 
-  Widget _buildPlantasTab() {
+  Widget _buildPlantasContent() {
     return PlantasSection(
       stories: _imovel!.stories,
       onPlantaTap: _abrirStory,

@@ -78,7 +78,7 @@ class GaleriaCategorias extends StatelessWidget {
 
         // Lista horizontal de categorias
         SizedBox(
-          height: 100,
+          height: 110,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: stories.length,

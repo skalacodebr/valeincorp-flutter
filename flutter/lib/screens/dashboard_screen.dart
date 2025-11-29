@@ -85,12 +85,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _carregando = true);
     
     try {
+      debugPrint('[Dashboard] Carregando imóveis...');
       final response = await _imoveisService.list(
         page: _paginaAtual,
         limit: 20,
         search: _termoPesquisa.isEmpty ? null : _termoPesquisa,
         cidade: _cidadeSelecionada == 'Todos' ? null : _cidadeSelecionada,
       );
+      
+      debugPrint('[Dashboard] Response success: ${response.success}');
+      debugPrint('[Dashboard] Response data: ${response.data?.length ?? 0} itens');
+      debugPrint('[Dashboard] Response message: ${response.message}');
       
       if (response.success && response.data != null) {
         var imoveisFiltrados = response.data!;
@@ -122,8 +127,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _totalItens = imoveisFiltrados.length;
         });
       }
-    } catch (e) {
-      // Handle error
+    } catch (e, stackTrace) {
+      debugPrint('[Dashboard] ERRO ao carregar imóveis: $e');
+      debugPrint('[Dashboard] Stack trace: $stackTrace');
     }
     
     setState(() => _carregando = false);
@@ -530,11 +536,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           itemCount: _imoveis.length,
           itemBuilder: (context, index) {
             final imovel = _imoveis[index];
-            final isFavorito = favoritosProvider.isFavorito(imovel.id);
-            
             return CardImovel(
               imovel: imovel,
-              isFavorito: isFavorito,
+              isFavorito: favoritosProvider.isFavorito(imovel.id),
               onTap: () {
                 Navigator.pushNamed(
                   context,
@@ -542,35 +546,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   arguments: imovel.id,
                 );
               },
-              onFavoritoTap: () async {
-                final result = await favoritosProvider.toggleFavorito(imovel);
-                if (mounted) {
-                  if (result) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isFavorito 
-                              ? 'Removido dos favoritos' 
-                              : 'Adicionado aos favoritos',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: isFavorito 
-                            ? AppColors.textSecondary 
-                            : AppColors.success,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  } else if (favoritosProvider.error != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(favoritosProvider.error!),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                    favoritosProvider.clearError();
-                  }
-                }
+              onFavoritoTap: () {
+                favoritosProvider.toggleFavorito(imovel);
               },
             );
           },

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/imovel.dart';
 import '../models/imovel_detalhes.dart';
@@ -42,12 +43,18 @@ class ImoveisService {
       if (areaMax != null) params['areaMax'] = areaMax;
       if (status != null && status.isNotEmpty) params['status'] = status;
 
+      debugPrint('[ImoveisService] Chamando API: ${ApiConfig.baseUrl}${ApiConfig.imoveis}');
+      debugPrint('[ImoveisService] Params: $params');
+      
       final response = await _api.get(
         ApiConfig.imoveis,
         queryParameters: params,
       );
 
       final data = response.data;
+      debugPrint('[ImoveisService] Response status: ${response.statusCode}');
+      debugPrint('[ImoveisService] Response data success: ${data['success']}');
+      debugPrint('[ImoveisService] Response data length: ${(data['data'] as List?)?.length ?? 0}');
 
       if (data['success'] == true) {
         final imoveisList = (data['data'] as List<dynamic>?)
@@ -68,10 +75,12 @@ class ImoveisService {
         message: data['message'] ?? 'Erro ao carregar imóveis',
         data: [],
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[ImoveisService] ERRO: $e');
+      debugPrint('[ImoveisService] Stack: $stackTrace');
       return ApiResponse<List<Imovel>>(
         success: false,
-        message: 'Erro de conexão',
+        message: 'Erro de conexão: $e',
         data: [],
       );
     }

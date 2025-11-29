@@ -604,7 +604,14 @@ class ImovelController extends Controller
                 'id' => $torre->id,
                 'nome' => $torre->nome ?? 'Torre ' . ($torre->id),
                 'totalAndares' => $torre->numero_andares ?? $unidadesPorAndar->keys()->max(),
+                'numero_andares' => $torre->numero_andares ?? $unidadesPorAndar->keys()->max(),
                 'unidadesPorAndar' => $torre->numero_apartamento_andar ?? 4,
+                'quantidade_unidades_andar' => $torre->quantidade_unidades_andar ?? 4,
+                // Campos no nível raiz da torre (snake_case para Flutter)
+                'total_unidades' => $totalUnidades,
+                'unidades_vendidas' => $unidadesVendidas,
+                'unidades_reservadas' => $unidadesReservadas,
+                'unidades_disponiveis' => $unidadesDisponiveis,
                 'resumo' => [
                     'totalUnidades' => $totalUnidades,
                     'unidadesVendidas' => $unidadesVendidas,
@@ -633,6 +640,15 @@ class ImovelController extends Controller
             'valorMedioVenda' => $unidadesVendidasGeral > 0 ? round($valorTotalVendido / $unidadesVendidasGeral, 2) : 0,
             'ticketMedio' => $unidadesVendidasGeral > 0 ? round($valorTotalVendido / $unidadesVendidasGeral, 2) : 0
         ];
+
+        // Campos no nível raiz (snake_case para compatibilidade com Flutter)
+        $espelho['total_unidades'] = $totalUnidadesGeral;
+        $espelho['unidades_vendidas'] = $unidadesVendidasGeral;
+        $espelho['unidades_reservadas'] = $unidadesReservadasGeral;
+        $espelho['unidades_disponiveis'] = $unidadesDisponiveisGeral;
+        $espelho['percentual_vendido'] = $totalUnidadesGeral > 0 ? round(($unidadesVendidasGeral / $totalUnidadesGeral) * 100, 1) : 0;
+        $espelho['percentual_reservado'] = $totalUnidadesGeral > 0 ? round(($unidadesReservadasGeral / $totalUnidadesGeral) * 100, 1) : 0;
+        $espelho['percentual_disponivel'] = $totalUnidadesGeral > 0 ? round(($unidadesDisponiveisGeral / $totalUnidadesGeral) * 100, 1) : 0;
 
         // Adiciona informações de evolução de vendas
         $espelho['evolucaoVendas'] = $this->getEvolucaoVendas($item);

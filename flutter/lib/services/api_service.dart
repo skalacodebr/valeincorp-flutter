@@ -25,19 +25,13 @@ class ApiService {
   static const String _refreshTokenKey = 'refresh_token';
 
   Dio get dio => _dio;
-  
-  bool _isInitialized = false;
 
   Future<void> init() async {
-    if (_isInitialized) return;
-    
-    _dio.interceptors.clear(); // Limpar interceptors existentes
-    
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await getToken();
-          if (token != null && token.isNotEmpty) {
+          if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           return handler.next(options);
@@ -48,9 +42,7 @@ class ApiService {
             if (refreshed) {
               // Retry original request with new token
               final token = await getToken();
-              if (token != null) {
-                error.requestOptions.headers['Authorization'] = 'Bearer $token';
-              }
+              error.requestOptions.headers['Authorization'] = 'Bearer $token';
               
               try {
                 final response = await _dio.fetch(error.requestOptions);
@@ -67,8 +59,6 @@ class ApiService {
         },
       ),
     );
-    
-    _isInitialized = true;
   }
 
   Future<String?> getToken() async {

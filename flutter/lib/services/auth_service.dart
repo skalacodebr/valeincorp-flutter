@@ -20,11 +20,11 @@ class AuthService {
         final token = data['token'] ?? data['data']?['token'];
         final refreshToken = data['refreshToken'] ?? data['data']?['refreshToken'];
         
-        if (token != null && token.toString().isNotEmpty) {
-          await _api.setToken(token.toString());
+        if (token != null) {
+          await _api.setToken(token);
         }
-        if (refreshToken != null && refreshToken.toString().isNotEmpty) {
-          await _api.setRefreshToken(refreshToken.toString());
+        if (refreshToken != null) {
+          await _api.setRefreshToken(refreshToken);
         }
 
         return ApiResponse<AuthResponse>(

@@ -5,7 +5,7 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 class NativePdfViewer extends StatelessWidget {
   final String filePath;
   final Function(int?) onRender;
-  final void Function(dynamic) onError;
+  final Function(String) onError;
   final Function(int?, int?) onPageChanged;
   final Function(dynamic)? onViewCreated;
 
