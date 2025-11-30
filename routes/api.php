@@ -2456,19 +2456,8 @@ Route::middleware('auth:sanctum')->prefix('click-tracking')->group(function () {
 });
 
 // ================================================
-// ROTAS DE COMPARTILHAMENTOS (/api/compartilhamentos/*) - REQUER AUTH
-// ================================================
-Route::middleware('auth:sanctum')->prefix('compartilhamentos')->group(function () {
-    Route::get('/', [CompartilhamentoController::class, 'index']);
-    Route::post('/', [CompartilhamentoController::class, 'store']);
-    Route::get('/{id}/estatisticas', [CompartilhamentoController::class, 'estatisticas']);
-    Route::get('/{id}', [CompartilhamentoController::class, 'show']);
-    Route::put('/{id}', [CompartilhamentoController::class, 'update']);
-    Route::delete('/{id}', [CompartilhamentoController::class, 'destroy']);
-});
-
-// ================================================
 // VALE INCORP MOBILE APP API ROUTES
 // ================================================
 // Incluir todas as rotas específicas do app mobile
+// As rotas de compartilhamentos estão definidas em vale_incorp_api.php
 require __DIR__ . '/vale_incorp_api.php';

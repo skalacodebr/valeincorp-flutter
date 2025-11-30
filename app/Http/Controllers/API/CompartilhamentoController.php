@@ -18,6 +18,12 @@ class CompartilhamentoController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        \Log::info('🔍 [COMPARTILHAMENTO] Index chamado', [
+            'user_id' => Auth::id(),
+            'auth_check' => Auth::check(),
+            'request_params' => $request->all(),
+        ]);
+
         $page = $request->get('page', 1);
         $limit = min($request->get('limit', 20), 100);
 
@@ -76,6 +82,13 @@ class CompartilhamentoController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        \Log::info('🔍 [COMPARTILHAMENTO] Store chamado', [
+            'user_id' => Auth::id(),
+            'auth_check' => Auth::check(),
+            'request_data' => $request->all(),
+            'headers' => $request->headers->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'entity_type' => 'required|in:empreendimento,unidade',
             'entity_id' => 'required|integer',
@@ -100,36 +113,64 @@ class CompartilhamentoController extends Controller
         $entityExists = false;
         if ($request->entity_type === 'empreendimento') {
             $entityExists = \App\Models\Empreendimento::where('id', $request->entity_id)->exists();
+            \Log::info('🔍 [COMPARTILHAMENTO] Verificando empreendimento', [
+                'entity_id' => $request->entity_id,
+                'exists' => $entityExists,
+            ]);
         } elseif ($request->entity_type === 'unidade') {
             $entityExists = \App\Models\EmpreendimentoUnidade::where('id', $request->entity_id)->exists();
+            \Log::info('🔍 [COMPARTILHAMENTO] Verificando unidade', [
+                'entity_id' => $request->entity_id,
+                'exists' => $entityExists,
+            ]);
         }
 
         if (!$entityExists) {
+            \Log::warning('❌ [COMPARTILHAMENTO] Entidade não encontrada', [
+                'entity_type' => $request->entity_type,
+                'entity_id' => $request->entity_id,
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Entidade não encontrada'
             ], 404);
         }
 
-        $compartilhamento = Compartilhamento::create([
-            'corretor_id' => Auth::id(),
-            'entity_type' => $request->entity_type,
-            'entity_id' => $request->entity_id,
-            'nome_cliente' => $request->nome_cliente,
-            'anotacao' => $request->anotacao,
-            'receber_notificacao' => $request->receber_notificacao ?? false,
-            'mostrar_espelho_vendas' => $request->mostrar_espelho_vendas ?? false,
-            'mostrar_endereco' => $request->mostrar_endereco ?? true,
-            'compartilhar_descricao' => $request->compartilhar_descricao ?? true,
-            'expira_em' => $request->expira_em,
-            'ativo' => true,
-        ]);
+        try {
+            $compartilhamento = Compartilhamento::create([
+                'corretor_id' => Auth::id(),
+                'entity_type' => $request->entity_type,
+                'entity_id' => $request->entity_id,
+                'nome_cliente' => $request->nome_cliente,
+                'anotacao' => $request->anotacao,
+                'receber_notificacao' => $request->receber_notificacao ?? false,
+                'mostrar_espelho_vendas' => $request->mostrar_espelho_vendas ?? false,
+                'mostrar_endereco' => $request->mostrar_endereco ?? true,
+                'compartilhar_descricao' => $request->compartilhar_descricao ?? true,
+                'expira_em' => $request->expira_em,
+                'ativo' => true,
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Compartilhamento criado com sucesso',
-            'data' => $this->formatCompartilhamento($compartilhamento->load('entity'))
-        ], 201);
+            \Log::info('✅ [COMPARTILHAMENTO] Criado com sucesso', [
+                'id' => $compartilhamento->id,
+                'link_unico' => $compartilhamento->link_unico,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compartilhamento criado com sucesso',
+                'data' => $this->formatCompartilhamento($compartilhamento->load('entity'))
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('❌ [COMPARTILHAMENTO] Erro ao criar', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao criar compartilhamento: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

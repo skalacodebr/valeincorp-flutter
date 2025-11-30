@@ -27,10 +27,15 @@ class CompartilhamentoService {
       if (ativo != null) queryParams['ativo'] = ativo.toString();
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
+      debugPrint('[CompartilhamentoService] Listando compartilhamentos:', queryParams);
+
       final response = await _apiService.get(
         ApiConfig.compartilhamentos,
         queryParameters: queryParams,
       );
+
+      debugPrint('[CompartilhamentoService] Response status: ${response.statusCode}');
+      debugPrint('[CompartilhamentoService] Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -46,31 +51,38 @@ class CompartilhamentoService {
         );
       }
 
+      final errorMessage = response.data['message'] ?? 'Erro ao carregar compartilhamentos';
+      debugPrint('[CompartilhamentoService] Erro na resposta: $errorMessage');
+      
       return ApiResponse(
         success: false,
-        message: response.data['message'] ?? 'Erro ao carregar compartilhamentos',
+        message: errorMessage,
       );
     } catch (e) {
       debugPrint('[CompartilhamentoService] Erro ao listar: $e');
+      debugPrint('[CompartilhamentoService] Tipo do erro: ${e.runtimeType}');
       
-      // Tratamento específico para erros comuns
-      final errorMessage = e.toString();
-      if (errorMessage.contains('404')) {
-        return ApiResponse(
-          success: true,
-          data: <Compartilhamento>[], // Retorna lista vazia enquanto API não está disponível
-          message: 'Funcionalidade em breve disponível',
-        );
-      } else if (errorMessage.contains('401')) {
-        return ApiResponse(
-          success: false,
-          message: 'Faça login para ver seus compartilhamentos',
-        );
+      // Verificar se é um DioException para obter mais detalhes
+      if (e.toString().contains('DioException')) {
+        final errorMessage = e.toString();
+        debugPrint('[CompartilhamentoService] DioException detalhada: $errorMessage');
+        
+        if (errorMessage.contains('404')) {
+          return ApiResponse(
+            success: false,
+            message: 'Rota não encontrada. Verifique se a API está configurada corretamente.',
+          );
+        } else if (errorMessage.contains('401')) {
+          return ApiResponse(
+            success: false,
+            message: 'Não autenticado. Faça login novamente.',
+          );
+        }
       }
       
       return ApiResponse(
         success: false,
-        message: 'Erro ao carregar compartilhamentos',
+        message: 'Erro ao carregar compartilhamentos: ${e.toString()}',
       );
     }
   }
@@ -78,10 +90,15 @@ class CompartilhamentoService {
   /// Cria um novo compartilhamento
   Future<ApiResponse<Compartilhamento>> criar(CriarCompartilhamentoRequest request) async {
     try {
+      debugPrint('[CompartilhamentoService] Criando compartilhamento:', request.toJson());
+      
       final response = await _apiService.post(
         ApiConfig.compartilhamentos,
         data: request.toJson(),
       );
+
+      debugPrint('[CompartilhamentoService] Response status: ${response.statusCode}');
+      debugPrint('[CompartilhamentoService] Response data: ${response.data}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = response.data;
@@ -94,29 +111,43 @@ class CompartilhamentoService {
         );
       }
 
+      final errorMessage = response.data['message'] ?? 'Erro ao criar compartilhamento';
+      debugPrint('[CompartilhamentoService] Erro na resposta: $errorMessage');
+      
       return ApiResponse(
         success: false,
-        message: response.data['message'] ?? 'Erro ao criar compartilhamento',
+        message: errorMessage,
       );
     } catch (e) {
       debugPrint('[CompartilhamentoService] Erro ao criar: $e');
+      debugPrint('[CompartilhamentoService] Tipo do erro: ${e.runtimeType}');
       
-      final errorMessage = e.toString();
-      if (errorMessage.contains('404')) {
-        return ApiResponse(
-          success: false,
-          message: 'Funcionalidade de compartilhamento em breve disponível. Use o compartilhamento direto por enquanto.',
-        );
-      } else if (errorMessage.contains('401')) {
-        return ApiResponse(
-          success: false,
-          message: 'Faça login para compartilhar',
-        );
+      // Verificar se é um DioException para obter mais detalhes
+      if (e.toString().contains('DioException')) {
+        final errorMessage = e.toString();
+        debugPrint('[CompartilhamentoService] DioException detalhada: $errorMessage');
+        
+        if (errorMessage.contains('404')) {
+          return ApiResponse(
+            success: false,
+            message: 'Rota não encontrada. Verifique se a API está configurada corretamente.',
+          );
+        } else if (errorMessage.contains('401')) {
+          return ApiResponse(
+            success: false,
+            message: 'Não autenticado. Faça login novamente.',
+          );
+        } else if (errorMessage.contains('403')) {
+          return ApiResponse(
+            success: false,
+            message: 'Acesso negado. Você não tem permissão para esta ação.',
+          );
+        }
       }
       
       return ApiResponse(
         success: false,
-        message: 'Erro ao criar compartilhamento',
+        message: 'Erro ao criar compartilhamento: ${e.toString()}',
       );
     }
   }
